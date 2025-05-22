@@ -37,6 +37,7 @@ for i, fonema in enumerate(fonemas_vocales + fonemas_consonantes):
     plt.title(f"Fonema {fonema}")
     plt.xlabel("Tiempo [s]")
 plt.tight_layout()
+plt.savefig("output/ej2/fonemas.png")
 plt.show()
 
 #b
