@@ -12,44 +12,33 @@ output_dir = 'output/ej1'
 os.makedirs(output_dir, exist_ok=True)
 
 for p in phonemes:
-    # Cargo señal
+    # Cargo y recorto 200 ms
     rate, x = wavfile.read(f'{p}.wav')
-    assert rate == fs, f"Frecuencia de muestreo inesperada en {p}.wav"
-
-    # Tomo los primeros 200 ms
+    assert rate == fs, f"Se esperaba {fs} Hz, pero {rate} Hz en {p}.wav"
     N = int(0.2 * fs)
     seg = x[:N]
 
+    # Dominio del tiempo
+    t = np.arange(N) / fs
+
     # Autocorrelación normalizada
-    ac = np.correlate(seg, seg, mode='full')
-    ac_pos = ac[len(ac)//2:]
-    lags = np.arange(len(ac_pos)) / fs
-    ac_norm = ac_pos / np.max(np.abs(ac_pos))
+    ac_full = np.correlate(seg, seg, mode='full')
+    ac = ac_full[N-1:] / np.max(np.abs(ac_full[N-1:]))
+    lags = np.arange(len(ac)) / fs
 
-    plt.figure()
-    plt.plot(lags, ac_norm)
-    plt.title(f'{p} – Autocorrelación normalizada')
-    plt.xlabel('Retraso [s]')
-    plt.ylabel('Autocorrelación')
-    plt.tight_layout()
-    plt.savefig(f'{output_dir}/{p}_autocorr.png')
-    plt.close()
-
-    # Periodograma
-    nfft = N
-    X = np.fft.rfft(seg, n=nfft)
-    Pxx = np.abs(X)**2 / N
-    freqs = np.fft.rfftfreq(nfft, d=1/fs)
+    # Periodograma con FFT de NumPy
+    X = np.fft.rfft(seg, n=N)
+    Pxx = (np.abs(X)**2) / N
+    freqs = np.fft.rfftfreq(N, d=1/fs)
     Pxx_db = 10 * np.log10(Pxx + 1e-12)
 
     # PSD teórica usando freqz
     a_coeffs = data.coef_a[p]
     b_coeffs = data.coef_b[p]
-
     b = b_coeffs
     a = [1.0] + [-ai for ai in a_coeffs]
-    w, H = freqz(b, a, worN=nfft, fs=fs)
-    H2_db = 20 * np.log10(np.abs(H) + 1e-12)
+    w, H = freqz(b, a, worN=N, fs=fs)
+    H2 = np.abs(H)**2
 
     # PSD de excitación
     if p in ['sh', 'f', 's', 'j']:
@@ -57,18 +46,22 @@ for p in phonemes:
     else:
         f_p, Su_p = data.psd_pulsos(f0=200, N=N, fs=fs)
         Su = np.interp(w, f_p, Su_p)
-    Su_db = 10 * np.log10(Su + 1e-12)
 
-    # Graficar periodograma y PSD teórica
-    plt.figure()
-    plt.plot(freqs, Pxx_db, label='Periodograma empírico')
-    plt.plot(w, H2_db + Su_db, label='PSD teórica')
-    plt.title(f'{p} – Periodograma vs PSD teórica')
-    plt.xlabel('Frecuencia [Hz]')
-    plt.ylabel('Magnitud [dB]')
-    plt.legend()
-    plt.tight_layout()
-    plt.savefig(f'{output_dir}/{p}_psd.png')
-    plt.close()
+    SX = H2 * Su
+    SX_db = 10 * np.log10(SX + 1e-12)
 
-print("¡Listo! Gráficos en 'output/ej1/'")
+    # Panel 1×3
+    fig, axs = plt.subplots(1, 3, figsize=(12, 3), constrained_layout=True)
+    axs[0].plot(t, seg)
+    axs[0].set(title=f'{p} – Señal (200 ms)', xlabel='Tiempo [s]')
+    axs[1].plot(lags, ac)
+    axs[1].set(title='Autocorrelación', xlabel='Retraso [s]')
+    axs[2].plot(freqs, Pxx_db, label='Empírico')
+    axs[2].plot(w, SX_db,     label='Teórica')
+    axs[2].set(title='Periodograma vs PSD', xlabel='Frecuencia [Hz]')
+    axs[2].legend(fontsize='small')
+
+    plt.savefig(f'{output_dir}/{p}_panel.png', dpi=150)
+    plt.close(fig)
+
+print(f"Paneles generados en '{output_dir}'")
