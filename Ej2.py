@@ -1,57 +1,62 @@
+import os
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy.signal import lfilter
 import sounddevice as sd
-from data import coef_a, coef_b, gen_pulsos, suavizar_bordes
+import data
 
+# Parámetros
 fs = 14700
 dur_ms = 500
 dur_samples = int(fs * dur_ms / 1000)
 transicion = 0.2
-fonemas_vocales = ['a', 'e', 'i', 'o', 'u']
-fonemas_consonantes = ['sh', 'f', 's', 'j']
+vowels = ['a', 'e', 'i', 'o', 'u']
+consonants = ['sh', 'f', 's', 'j']
 
-def sintetizar_fonema(fonema, pitch=None):
-    a = coef_a[fonema]
-    b = coef_b[fonema][0]
-    orden = len(a)
-    
-    if fonema in fonemas_vocales:
-        f0 = pitch if pitch else 200
-        U = gen_pulsos(f0, dur_samples, fs)
+# Construir vectores b y a
+b_dict = {p: data.coef_b[p] for p in vowels + consonants}
+a_dict = {p: [1.0] + [-ai for ai in data.coef_a[p]] for p in vowels + consonants}
+
+# Síntesis de un fonema con filter(b,a,u)
+def sintetizar_fonema(p, pitch=200):
+    # Fuente de excitación
+    if p in vowels:
+        u = data.gen_pulsos(pitch, dur_samples, fs)
     else:
-        U = np.random.normal(0, 1, dur_samples)
-    
-    X = np.zeros(dur_samples)
-    for n in range(orden, dur_samples):
-        X[n] = np.dot(a, X[n-orden:n][::-1]) + b * U[n]
-    
-    X = suavizar_bordes(X, transicion)
-    return X
+        rng = np.random.default_rng(0)
+        u = rng.standard_normal(dur_samples)
+    # Filtrado ARMA (solo AR)
+    b = b_dict[p]
+    a = a_dict[p]
+    x = lfilter(b, a, u)
+    # Suavizar bordes
+    x = data.suavizar_bordes(x, transicion)
+    return x
 
-#a
+# Graficar primeros 200 ms
+os.makedirs('output/ej2', exist_ok=True)
 plt.figure(figsize=(12, 8))
-for i, fonema in enumerate(fonemas_vocales + fonemas_consonantes):
-    X = sintetizar_fonema(fonema)
+for i, p in enumerate(vowels + consonants):
+    x = sintetizar_fonema(p)
+    t = np.arange(int(0.2 * fs)) / fs
     plt.subplot(3, 3, i+1)
-    plt.plot(np.arange(0, int(0.2*fs)) / fs, X[:int(0.2*fs)])
-    plt.title(f"Fonema {fonema}")
-    plt.xlabel("Tiempo [s]")
+    plt.plot(t, x[:len(t)])
+    plt.title(f'Fonema {p}')
+    plt.xlabel('Tiempo [s]')
 plt.tight_layout()
-plt.savefig("output/ej2/fonemas.png")
-plt.show()
+plt.savefig('output/ej2/fonemas.png')
+plt.close()
 
-#b
-secuencia_1 = np.concatenate([sintetizar_fonema(f) for f in fonemas_vocales + fonemas_consonantes])
-sd.play(secuencia_1, samplerate=fs)
+# Concatenar y reproducir pitch fijo
+seq1 = np.concatenate([sintetizar_fonema(p) for p in vowels + consonants])
+sd.play(seq1, fs)
 sd.wait()
 
-#c
-pitch_por_fonema = {'a': 100, 'e': 125, 'i': 150, 'o': 125, 'u': 100}
-secuencia_2 = []
-for f in fonemas_vocales:
-    secuencia_2.append(sintetizar_fonema(f, pitch=pitch_por_fonema[f]))
-for f in fonemas_consonantes:
-    secuencia_2.append(sintetizar_fonema(f))
-secuencia_2 = np.concatenate(secuencia_2)
-sd.play(secuencia_2, samplerate=fs)
+# Concatenar con pitches variables
+pitch_map = {'a':100,'e':125,'i':150,'o':125,'u':100}
+seq2 = np.concatenate(
+    [sintetizar_fonema(p, pitch_map[p]) if p in vowels else sintetizar_fonema(p)
+     for p in vowels + consonants]
+)
+sd.play(seq2, fs)
 sd.wait()
