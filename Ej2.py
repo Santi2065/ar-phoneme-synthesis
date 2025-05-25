@@ -32,12 +32,12 @@ def sintetizar_fonema(p, pitch=200):
     peak = np.max(np.abs(x)) + 1e-8
     return x / peak
 
-# 1) Punto (a): sintetizar y guardar señales
+# Sintetizar y guardar señales
 senales_fonemas = {}
 os.makedirs('output/ej2', exist_ok=True)
 plt.figure(figsize=(12, 8))
 for i, p in enumerate(fonemas):
-    x = sintetizar_fonema(p)  # pitch default 200 Hz
+    x = sintetizar_fonema(p)
     senales_fonemas[p] = x
     t = np.arange(int(0.2 * fs)) / fs
     plt.subplot(3, 3, i+1)
@@ -48,12 +48,11 @@ plt.tight_layout()
 plt.savefig('output/ej2/fonemas.png', dpi=300)
 plt.close()
 
-# 2) Punto (b): concatenar usando las señales de (a), pitch fijo 200 Hz
+# Concatenar usando las señales de (a), pitch fijo 200 Hz
 seq1 = np.concatenate([senales_fonemas[p] for p in fonemas])
 sd.play(seq1, fs)
 sd.wait()
 
-# Guardar gráfica de la señal concatenada
 plt.figure(figsize=(12, 4))
 t1 = np.arange(len(seq1)) / fs
 plt.plot(t1, seq1)
@@ -68,7 +67,7 @@ plt.tight_layout()
 plt.savefig('output/ej2/señal_concatenada_200hz.png', dpi=300)
 plt.close()
 
-# 3) Punto (c): concatenar con pitches variables
+# Concatenar con pitches variables
 pitch_map = {'a': 100, 'e': 125, 'i': 150, 'o': 125, 'u': 100}
 seq2 = np.concatenate([
     sintetizar_fonema(p, pitch_map[p]) if p in vocales else senales_fonemas[p]
@@ -77,7 +76,6 @@ seq2 = np.concatenate([
 sd.play(seq2, fs)
 sd.wait()
 
-# Guardar gráfica de la señal concatenada con pitches variables
 plt.figure(figsize=(12, 4))
 t2 = np.arange(len(seq2)) / fs
 plt.plot(t2, seq2)
