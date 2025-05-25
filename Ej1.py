@@ -7,14 +7,14 @@ import data
 
 # Parámetros
 fs = 14700
-phonemes = ['a', 'e', 'i', 'o', 'u', 'sh', 'f', 's', 'j']
+fonemas = ['a', 'e', 'i', 'o', 'u', 'sh', 'f', 's', 'j']
 output_dir = 'output/ej1'
 os.makedirs(output_dir, exist_ok=True)
 
-for p in phonemes:
+for f in fonemas:
     # 1) Cargo WAV y tomo 200 ms
-    rate, x = wavfile.read(f'{p}.wav')
-    assert rate == fs, f"Se esperaba {fs} Hz en {p}.wav, pero vino {rate} Hz"
+    rate, x = wavfile.read(f'{f}.wav')
+    assert rate == fs, f"Se esperaba {fs} Hz en {f}.wav, pero vino {rate} Hz"
     N = int(0.2 * fs)
     seg = x[:N].astype(float)
 
@@ -38,14 +38,14 @@ for p in phonemes:
     Pxx_db = 10 * np.log10(Pxx + 1e-12)
 
     # PSD teórica del modelo AR
-    a_coeffs = data.coef_a[p]
-    b_coeffs = data.coef_b[p]
+    a_coeffs = data.coef_a[f]
+    b_coeffs = data.coef_b[f]
     b = b_coeffs
     a = [1.0] + [-ai for ai in a_coeffs]
     w, H = freqz(b, a, worN=N, fs=fs)
     H2 = np.abs(H)**2
 
-    if p in ['sh','f','s','j']:
+    if f in ['sh','f','s','j']:
         Su = np.ones_like(w)
     else:
         f_p, Su_p = data.psd_pulsos(f0=200, N=N, fs=fs)
@@ -63,7 +63,7 @@ for p in phonemes:
 
     # (a) Señal en el dominio del tiempo
     axs[0].plot(t, seg)
-    axs[0].set(title=f'{p} – Señal (200 ms)',
+    axs[0].set(title=f'{f} – Señal (200 ms)',
                xlabel='Tiempo [s]',
                ylabel='Amplitud normalizada')
 
@@ -82,7 +82,7 @@ for p in phonemes:
     axs[2].legend(fontsize='small')
 
     # Guardar panel
-    plt.savefig(f'{output_dir}/{p}_panel.png', dpi=150)
+    plt.savefig(f'{output_dir}/{f}_panel.png', dpi=150)
     plt.close(fig)
 
 print(f"Paneles generados en '{output_dir}'")
