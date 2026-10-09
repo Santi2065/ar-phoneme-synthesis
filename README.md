@@ -112,6 +112,6 @@ python docs/figures/make_figures.py  # figures of this README and Table 1 (no au
   title        = {Analysis and Synthesis of Spanish Phonemes with {AR}(20) Source--Filter Models},
   year         = {2025},
   howpublished = {Universidad de San Andr{\'e}s, Inference and Estimation},
-  url          = {https://github.com/Santi2065/tp2-inferencia-1Q2025}
+  url          = {https://github.com/Santi2065/ar-phoneme-synthesis}
 }
 ```
